@@ -175,18 +175,34 @@ def create_radar_chart(player_name, stats_to_plot, cluster_avg_stats, projected_
     
     # Ajustar los límites del eje radial dinámicamente
     all_values = player_values + cluster_avg_values + projected_values
-    max_val_plot = np.max([v for v in all_values if not math.isnan(v)]) # Ignorar NaN para el cálculo del máximo
-    ax.set_ylim(0, max_val_plot * 1.1) # Un 10% de margen superior
+    max_val_plot = np.nanmax([v for v in all_values if np.isfinite(v) and not math.isnan(v)]) # Ignorar NaN y no finitos
+    max_val_plot = max_val_plot if max_val_plot > 0 else 1.0
 
-    # Configurar las etiquetas de los ejes
+    # MODIFICACIÓN 1: Aumentar el margen superior del eje radial
+    # Originalmente era max_val_plot * 1.1, lo cambiamos a 1.2 o incluso 1.25 si necesitas más espacio
+    ax.set_ylim(0, max_val_plot * 1.25) #
+
     ax.set_xticks(angles[:-1])
-    # Usar el mapeo de nombres de estadísticas
-    display_stats_labels = [STAT_NAMES_MAP.get(s, s) for s in stats_labels]
-    ax.set_xticklabels(display_stats_labels, fontsize=10) # Aumentar fontsize para mejor legibilidad
+    display_stats_labels = [STAT_NAMES_MAP.get(s, s) for s in stats_labels] #
+    ax.set_xticklabels(display_stats_labels, fontsize=10) #
 
-    ax.set_title(title, va='bottom', fontsize=14, pad=25)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=10)
-    plt.show() # Muestra el gráfico en pantalla
+    # MODIFICACIÓN 2: Aumentar el pad del título del gráfico
+    # Originalmente el pad era 25, lo aumentamos (ej. a 30 o 35)
+    ax.set_title(title, va='bottom', fontsize=14, pad=35) #
+    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.3), fontsize=10) #
+
+    # MODIFICACIÓN 3: Ajustar el layout general de la figura
+    # Esto ayuda a que los elementos no se superpongan y se use bien el espacio.
+    # El valor de 'pad' aquí es el relleno alrededor de los elementos del subplot.
+    try:
+        fig.tight_layout(pad=3.0)
+    except Exception:
+        # A veces tight_layout puede fallar con subplots polares si hay advertencias
+        # que se tratan como errores. Podemos intentar con plt.
+        plt.tight_layout(pad=3.0)
+
+
+    plt.show()
 
 # Esta función es una copia de create_radar_chart pero para guardar en archivo, no mostrar.
 # Es necesario pasarle `ax` (el Axes de matplotlib) en lugar de crearlo internamente.
@@ -222,17 +238,20 @@ def create_radar_chart_to_file(ax, player_name, stats_to_plot, cluster_avg_stats
     ax.set_theta_direction(-1)
     ax.set_rlabel_position(0)
     
-    all_values = player_values + cluster_avg_values + projected_values
-    max_val_plot = np.max([v for v in all_values if not math.isnan(v)])
-    ax.set_ylim(0, max_val_plot * 1.1)
+    all_values = player_values + cluster_avg_values + projected_values #
+    max_val_plot = np.nanmax([v for v in all_values if np.isfinite(v) and not math.isnan(v)]) #
+    max_val_plot = max_val_plot if max_val_plot > 0 else 1.0 #
     
-    ax.set_xticks(angles[:-1])
-    # Usar el mapeo de nombres de estadísticas
-    display_stats_labels = [STAT_NAMES_MAP.get(s, s) for s in stats_labels]
-    ax.set_xticklabels(display_stats_labels, fontsize=10)
+    # MODIFICACIÓN 1: Aumentar el margen superior del eje radial
+    ax.set_ylim(0, max_val_plot * 1.25) #
+    
+    ax.set_xticks(angles[:-1]) #
+    display_stats_labels = [STAT_NAMES_MAP.get(s, s) for s in stats_labels] #
+    ax.set_xticklabels(display_stats_labels, fontsize=10) #
 
-    ax.set_title(title, va='bottom', fontsize=12, pad=25) # Título más pequeño para los sub-gráficos
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=9)
+    # MODIFICACIÓN 2: Aumentar el pad del título del gráfico
+    ax.set_title(title, va='bottom', fontsize=12, pad=30) #
+    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.3), fontsize=9)
 
 
 def analyze_player_weak_spots(player_name, player_data_with_clusters, cluster_means, cluster_roles, stats_columns, scaler, threshold_multiplier=0.75):
@@ -454,14 +473,18 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, cluster_
     normalized_cluster_avg_stats_all_pdf = cluster_avg_stats_all_pdf / max_val_all_pdf
     normalized_projected_stats_all_pdf = projected_stats_all_pdf / max_val_all_pdf
     
-    fig_global, ax_global = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True))
+    fig_global, ax_global = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True)) #
     create_radar_chart_to_file(ax_global, player_name, normalized_player_stats_all_pdf, normalized_cluster_avg_stats_all_pdf, 
                                normalized_projected_stats_all_pdf, all_radar_stats_for_pdf, 
-                               player_cluster_role, # <-- ¡Añadir aquí!
-                               title=f'Rendimiento Global de {player_name} vs. Clúster y Proyección')
-    global_radar_img = f"radar_global_{player_name.replace(' ', '_')}.png"
-    fig_global.savefig(global_radar_img, bbox_inches='tight', dpi=150)
-    plt.close(fig_global) # Cierra la figura específica
+                               player_cluster_role,
+                               title=f'Rendimiento Global de {player_name} vs. Clúster y Proyección') #
+    
+    # MODIFICACIÓN 3: Aplicar tight_layout a la figura antes de guardar
+    fig_global.tight_layout(pad=3.0) # Puedes ajustar el valor de pad según sea necesario
+
+    global_radar_img = f"radar_global_{player_name.replace(' ', '_')}.png" #
+    fig_global.savefig(global_radar_img, bbox_inches='tight', dpi=150) #
+    plt.close(fig_global) #
     img_filenames.append(global_radar_img)
 
 
@@ -482,14 +505,18 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, cluster_
         normalized_cluster_avg_stats_pdf = cluster_avg_stats_cat_pdf / max_for_category_pdf
         normalized_projected_stats_pdf = projected_stats_cat_pdf / max_for_category_pdf
 
-        fig_cat, ax_cat = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+        fig_cat, ax_cat = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True)) #
         create_radar_chart_to_file(ax_cat, player_name, normalized_player_stats_pdf, normalized_cluster_avg_stats_pdf, 
                                    normalized_projected_stats_pdf, current_stats_to_plot_pdf, 
-                                   player_cluster_role, # <-- ¡Añadir aquí!
-                                   title=f'Rendimiento de {player_name} - {category_name}')
-        cat_radar_img = f"radar_{category_name.replace(' ', '_')}_{player_name.replace(' ', '_')}.png"
-        fig_cat.savefig(cat_radar_img, bbox_inches='tight', dpi=120)
-        plt.close(fig_cat)
+                                   player_cluster_role,
+                                   title=f'Rendimiento de {player_name} - {category_name}') #
+        
+        # MODIFICACIÓN 3: Aplicar tight_layout a la figura antes de guardar
+        fig_cat.tight_layout(pad=3.0) # Puedes ajustar el valor de pad
+
+        cat_radar_img = f"radar_{category_name.replace(' ', '_')}_{player_name.replace(' ', '_')}.png" #
+        fig_cat.savefig(cat_radar_img, bbox_inches='tight', dpi=120) #
+        plt.close(fig_cat) #
         img_filenames.append(cat_radar_img)
 
 
