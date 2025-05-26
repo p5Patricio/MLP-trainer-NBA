@@ -16,6 +16,32 @@ radar_stats_categories = {
     "Defensivas": ['STL', 'BLK', 'PF'] # PF es "malas", considerarla bien
 }
 
+# Mapeo de abreviaturas de estadísticas a nombres completos para mejor visualización
+STAT_NAMES_MAP = {
+    'MIN': 'Minutos',
+    'FGM': 'Tiros de Campo Anotados',
+    'FGA': 'Tiros de Campo Intentados',
+    'FG_PCT': 'Tiros de Campo %',
+    'FG3M': 'Triples Anotados',
+    'FG3A': 'Triples Intentados',
+    'FG3_PCT': 'Triples %',
+    'FTM': 'Tiros Libres Anotados',
+    'FTA': 'Tiros Libres Intentados',
+    'FT_PCT': 'Tiros Libres %',
+    'OREB': 'Rebotes Ofensivos',
+    'DREB': 'Rebotes Defensivos',
+    'REB': 'Rebotes Totales',
+    'AST': 'Asistencias',
+    'STL': 'Robos',
+    'BLK': 'Bloqueos',
+    'TOV': 'Pérdidas de Balón',
+    'PF': 'Faltas Personales',
+    'PTS': 'Puntos',
+    'GP': 'Partidos Jugados',
+    'GS': 'Partidos Iniciados',
+    # Puedes añadir más si tienes otras estadísticas en tu dataset
+}
+
 # Diccionario de ejercicios detallados (puedes expandirlo)
 NBA_DRILLS = {
     "puntería/eficiencia": [
@@ -107,7 +133,7 @@ def display_player_selection_menu(players_in_team_df):
         except ValueError:
             print("Entrada inválida. Por favor, ingresa un número.")
 
-def create_radar_chart(player_name, stats_to_plot, cluster_avg_stats, projected_stats, stats_labels, title="Rendimiento del Jugador"):
+def create_radar_chart(player_name, stats_to_plot, cluster_avg_stats, projected_stats, stats_labels, player_cluster_role, title="Rendimiento del Jugador"):
     """
     Crea un gráfico de radar para comparar las estadísticas del jugador
     con el promedio del clúster y las estadísticas proyectadas. Este se muestra en pantalla.
@@ -136,7 +162,7 @@ def create_radar_chart(player_name, stats_to_plot, cluster_avg_stats, projected_
     ax.fill(angles, player_values, color='green', alpha=0.25)
 
     # Graficar el promedio del clúster
-    ax.plot(angles, cluster_avg_values, color='red', linewidth=2, label=f'Promedio Clúster ({cluster_avg_stats.name})')
+    ax.plot(angles, cluster_avg_values, color='red', linewidth=2, label=f'Promedio {player_cluster_role} ({cluster_avg_stats.name})')
     ax.fill(angles, cluster_avg_values, color='red', alpha=0.1)
 
     # Graficar las estadísticas proyectadas (después del entrenamiento)
@@ -154,7 +180,9 @@ def create_radar_chart(player_name, stats_to_plot, cluster_avg_stats, projected_
 
     # Configurar las etiquetas de los ejes
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(stats_labels, fontsize=10) # Aumentar fontsize para mejor legibilidad
+    # Usar el mapeo de nombres de estadísticas
+    display_stats_labels = [STAT_NAMES_MAP.get(s, s) for s in stats_labels]
+    ax.set_xticklabels(display_stats_labels, fontsize=10) # Aumentar fontsize para mejor legibilidad
 
     ax.set_title(title, va='bottom', fontsize=14, pad=25)
     ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=10)
@@ -162,7 +190,7 @@ def create_radar_chart(player_name, stats_to_plot, cluster_avg_stats, projected_
 
 # Esta función es una copia de create_radar_chart pero para guardar en archivo, no mostrar.
 # Es necesario pasarle `ax` (el Axes de matplotlib) en lugar de crearlo internamente.
-def create_radar_chart_to_file(ax, player_name, stats_to_plot, cluster_avg_stats, projected_stats, stats_labels, title="Rendimiento del Jugador"):
+def create_radar_chart_to_file(ax, player_name, stats_to_plot, cluster_avg_stats, projected_stats, stats_labels, player_cluster_role, title="Rendimiento del Jugador"):
     """
     Crea un gráfico de radar para comparar las estadísticas del jugador
     con el promedio del clúster y las estadísticas proyectadas, en un Axes dado.
@@ -184,7 +212,7 @@ def create_radar_chart_to_file(ax, player_name, stats_to_plot, cluster_avg_stats
     ax.plot(angles, player_values, color='green', linewidth=2, label=f'{player_name} (Actual)')
     ax.fill(angles, player_values, color='green', alpha=0.25)
 
-    ax.plot(angles, cluster_avg_values, color='red', linewidth=2, label=f'Promedio Clúster ({cluster_avg_stats.name})')
+    ax.plot(angles, cluster_avg_values, color='red', linewidth=2, label=f'Promedio {player_cluster_role} ({cluster_avg_stats.name})')
     ax.fill(angles, cluster_avg_values, color='red', alpha=0.1)
 
     ax.plot(angles, projected_values, color='blue', linewidth=2, linestyle='--', label=f'{player_name} (Proyectado)')
@@ -199,13 +227,15 @@ def create_radar_chart_to_file(ax, player_name, stats_to_plot, cluster_avg_stats
     ax.set_ylim(0, max_val_plot * 1.1)
     
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(stats_labels, fontsize=10)
+    # Usar el mapeo de nombres de estadísticas
+    display_stats_labels = [STAT_NAMES_MAP.get(s, s) for s in stats_labels]
+    ax.set_xticklabels(display_stats_labels, fontsize=10)
 
     ax.set_title(title, va='bottom', fontsize=12, pad=25) # Título más pequeño para los sub-gráficos
     ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=9)
 
 
-def analyze_player_weak_spots(player_name, player_data_with_clusters, cluster_means, stats_columns, scaler, threshold_multiplier=0.75):
+def analyze_player_weak_spots(player_name, player_data_with_clusters, cluster_means, cluster_roles, stats_columns, scaler, threshold_multiplier=0.75):
     """
     Analiza las áreas débiles de un jugador comparando sus estadísticas con
     las de su clúster promedio y genera gráficos de radar con proyección de mejora,
@@ -224,7 +254,8 @@ def analyze_player_weak_spots(player_name, player_data_with_clusters, cluster_me
     cluster_avg_stats_raw = cluster_means.loc[player_cluster]
     cluster_avg_stats_raw.name = player_cluster # Asignar nombre para la leyenda del gráfico
 
-    print(f"\n--- Análisis de Áreas Débiles para {player_name} (Clúster: {player_cluster}) ---")
+    player_cluster_role = cluster_roles.get(player_cluster, "Rol Desconocido") # Obtener el rol, con fallback
+    print(f"\n--- Análisis de Áreas Débiles para {player_name} (Clúster: {player_cluster} - Rol: {player_cluster_role}) ---")
     print("Estadísticas del Jugador vs. Promedio de su Clúster:")
 
     comparison_df = pd.DataFrame({
@@ -348,7 +379,8 @@ def analyze_player_weak_spots(player_name, player_data_with_clusters, cluster_me
             normalized_player_stats,
             normalized_cluster_avg_stats,
             normalized_projected_stats,
-            current_stats_to_plot, # Usar las etiquetas de la categoría
+            current_stats_to_plot,
+            player_cluster_role, # <-- ¡Añadir aquí!
             title=f'Rendimiento de {player_name} - {category_name}'
         )
     
@@ -375,6 +407,7 @@ def analyze_player_weak_spots(player_name, player_data_with_clusters, cluster_me
         normalized_cluster_avg_stats_all,
         normalized_projected_stats_all,
         all_radar_stats_for_global,
+        player_cluster_role, # <-- ¡Añadir aquí!
         title=f'Rendimiento Global de {player_name} vs. Clúster y Proyección'
     )
 
@@ -383,22 +416,24 @@ def analyze_player_weak_spots(player_name, player_data_with_clusters, cluster_me
         player_name,
         player_row,
         player_cluster,
+        cluster_roles, # ¡Añadir cluster_roles aquí!
         player_stats_raw,
         cluster_avg_stats_raw,
         projected_stats_raw,
-        comparison_df, # Pasar el DataFrame de comparación
-        weak_areas, # Pasar la lista de áreas débiles
-        detailed_drills_html, # Pasar el HTML con los drills
-        stats_columns, # Para el radar global
-        radar_stats_categories # Para los radares por categoría
+        comparison_df,
+        weak_areas,
+        detailed_drills_html,
+        stats_columns,
+        radar_stats_categories
     )
     print("Reporte PDF generado exitosamente.")
 
 
-def generate_player_report_pdf(player_name, player_row, player_cluster, player_stats_raw, 
+def generate_player_report_pdf(player_name, player_row, player_cluster, cluster_roles, player_stats_raw, 
                                cluster_avg_stats_raw, projected_stats_raw, comparison_df, 
                                weak_areas_list, detailed_drills_html,
                                all_stats_columns, radar_categories):
+    player_cluster_role = cluster_roles.get(player_cluster, "Rol Desconocido")
     """
     Genera un reporte PDF con el análisis del jugador, incluyendo gráficos y rutinas.
     """
@@ -421,7 +456,8 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, player_s
     
     fig_global, ax_global = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True))
     create_radar_chart_to_file(ax_global, player_name, normalized_player_stats_all_pdf, normalized_cluster_avg_stats_all_pdf, 
-                               normalized_projected_stats_all_pdf, all_radar_stats_for_pdf,
+                               normalized_projected_stats_all_pdf, all_radar_stats_for_pdf, 
+                               player_cluster_role, # <-- ¡Añadir aquí!
                                title=f'Rendimiento Global de {player_name} vs. Clúster y Proyección')
     global_radar_img = f"radar_global_{player_name.replace(' ', '_')}.png"
     fig_global.savefig(global_radar_img, bbox_inches='tight', dpi=150)
@@ -448,7 +484,8 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, player_s
 
         fig_cat, ax_cat = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
         create_radar_chart_to_file(ax_cat, player_name, normalized_player_stats_pdf, normalized_cluster_avg_stats_pdf, 
-                                   normalized_projected_stats_pdf, current_stats_to_plot_pdf,
+                                   normalized_projected_stats_pdf, current_stats_to_plot_pdf, 
+                                   player_cluster_role, # <-- ¡Añadir aquí!
                                    title=f'Rendimiento de {player_name} - {category_name}')
         cat_radar_img = f"radar_{category_name.replace(' ', '_')}_{player_name.replace(' ', '_')}.png"
         fig_cat.savefig(cat_radar_img, bbox_inches='tight', dpi=120)
@@ -479,6 +516,9 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, player_s
             .chart-container {{ text-align: center; margin-bottom: 30px; }}
             .chart-container img {{ max-width: 90%; height: auto; border: 1px solid #ccc; border-radius: 5px; }}
             .footer {{ text-align: center; font-size: 0.8em; color: #777; margin-top: 30px; }}
+            /* Clases para el rendimiento en la tabla */
+            .good-performance {{ color: green; font-weight: bold; }}
+            .weak-spot {{ color: red; font-weight: bold; }}
         </style>
     </head>
     <body>
@@ -486,13 +526,13 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, player_s
             <h1>Reporte de Análisis de Jugador NBA</h1>
             <h2>{player_name}</h2>
             <p><strong>Temporada:</strong> {player_row['SEASON_ID'].iloc[0]} | 
-               <strong>Equipo:</strong> {player_row['TEAM_ABBREVIATION'].iloc[0]} | 
-               <strong>Edad:</strong> {player_row['PLAYER_AGE'].iloc[0]:.0f} años</p>
+                <strong>Equipo:</strong> {player_row['TEAM_ABBREVIATION'].iloc[0]} | 
+                <strong>Edad:</strong> {player_row['PLAYER_AGE'].iloc[0]:.0f} años</p>
         </div>
 
         <div class="cluster-info">
             <h3>Información del Clúster</h3>
-            <p>Este jugador ha sido agrupado en el <strong>Clúster {player_cluster}</strong>.</p>
+            <p>Este jugador ha sido agrupado en el <strong>Clúster {player_cluster} ({player_cluster_role})</strong>.</p>
             <p>Los jugadores de este clúster comparten perfiles estadísticos similares. El análisis compara el rendimiento de {player_name} con el promedio de jugadores de su mismo clúster.</p>
             <h4>Estadísticas Promedio del Clúster:</h4>
             <table class="comparison-table">
@@ -504,9 +544,10 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, player_s
                 </thead>
                 <tbody>
     """
-    # Muestra todas las stats del clúster. Asegúrate de que las columnas existan en cluster_avg_stats_raw
+    # MODIFICACIÓN AQUI: Muestra las estadísticas promedio del clúster con nombres completos
     for stat in [s for s in all_stats_columns if s in cluster_avg_stats_raw.index]:
-        report_html += f"<tr><td>{stat}</td><td>{cluster_avg_stats_raw[stat]:.2f}</td></tr>"
+        display_stat_name = STAT_NAMES_MAP.get(stat, stat) # Obtener el nombre completo
+        report_html += f"<tr><td>{display_stat_name}</td><td>{cluster_avg_stats_raw[stat]:.2f}</td></tr>"
     report_html += """
                 </tbody>
             </table>
@@ -527,15 +568,42 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, player_s
                 </thead>
                 <tbody>
     """.format(player_name=player_name)
-    # Usar el comparison_df para la tabla
+    # MODIFICACIÓN AQUI: Usar el comparison_df para la tabla con nombres completos y formato condicional
     for index, row in comparison_df.iterrows():
+        player_val = row['Player Stats']
+        cluster_val = row['Cluster Average']
+        diff_val = row['Difference']
+        
+        # --- MODIFICACIÓN IMPORTANTE AQUÍ ---
+        # Asegurarse de que percent_diff_val sea un número antes de formatearlo.
+        # Si ya es un string (e.g., "15.23%"), quita el '%' y conviértelo a float.
+        raw_percent_diff = row['Percentage Difference']
+        if isinstance(raw_percent_diff, str):
+            # Eliminar el '%' si está presente y luego convertir a float
+            percent_diff_val = float(raw_percent_diff.replace('%', ''))
+        else:
+            # Ya es un número (float o int), úsalo directamente
+            percent_diff_val = float(raw_percent_diff)
+        # --- FIN MODIFICACIÓN IMPORTANTE ---
+
+        # Formateo condicional para el porcentaje de diferencia
+        percent_diff_str = f"{percent_diff_val:.2f}%" # Ahora percent_diff_val es definitivamente un float
+        color_class = ""
+        if percent_diff_val > 5:
+            color_class = "good-performance"
+        elif percent_diff_val < -5:
+            color_class = "weak-spot"
+        
+        # Obtener el nombre completo de la estadística
+        display_stat_name = STAT_NAMES_MAP.get(index, index) # 'index' es el nombre de la estadística en comparison_df
+        
         report_html += f"""
                     <tr>
-                        <td>{index}</td>
-                        <td>{row['Player Stats']:.2f}</td>
-                        <td>{row['Cluster Average']:.2f}</td>
-                        <td>{row['Difference']:.2f}</td>
-                        <td>{row['Percentage Difference']}</td>
+                        <td>{display_stat_name}</td>
+                        <td>{player_val:.2f}</td>
+                        <td>{cluster_val:.2f}</td>
+                        <td>{diff_val:.2f}</td>
+                        <td class="{color_class}">{percent_diff_str}</td>
                     </tr>
         """
     report_html += """
@@ -614,6 +682,95 @@ def generate_player_report_pdf(player_name, player_row, player_cluster, player_s
             os.remove(img_file)
             print(f"Imagen temporal eliminada: {img_file}")
 
+def assign_cluster_roles(cluster_means):
+    """
+    Asigna un rol descriptivo a cada clúster basándose en sus estadísticas promedio.
+    Esta función es heurística y ha sido ajustada según el análisis de los datos.
+    Se asume que las estadísticas de cluster_means son TOTALES de la temporada.
+    """
+    cluster_roles = {}
+    
+    # Asume que las estadísticas son TOTALES de la temporada y no por partido.
+    # Ajusta los umbrales basándote en esta suposición.
+    
+    for cluster_id, stats in cluster_means.iterrows():
+        role = "Indefinido" # Rol por defecto
+
+        # Convertir a Series para fácil acceso a los valores y manejo de NaNs
+        stats = stats.fillna(0) # Rellenar NaN con 0 para comparaciones numéricas
+
+        # Orden de prioridad de los roles: de los más específicos/extremos a los más generales.
+
+        # --- Roles de Baja Participación / Desarrollo ---
+        # Clúster con muy pocos minutos y partidos, producción muy baja.
+        # Esto captura jugadores con un impacto mínimo.
+        if stats['MIN'] < 200 and stats['GP'] < 25 and stats['PTS'] < 100:
+            role = "Jugador de Límite de Roster / Desarrollo"
+        
+        # --- Interiores Dominantes / Rebotadores Eficientes / Protectores de Aro ---
+        # Muy alto FG_PCT, alto REB, BLK decente. (Centros puros o Pívots)
+        # Separamos los protectores de aro más específicos
+        elif stats['BLK'] > 70 and stats['REB'] > 300 and stats['MIN'] > 800:
+            role = "Protector de Aro / Pívot Defensivo"
+        elif stats['FG_PCT'] > 0.60 and stats['REB'] > 400 and stats['PTS'] > 300:
+            role = "Centro Dominante / Interior Eficiente"
+        # Hombres grandes con buen rebote y eficiencia, pero no tan dominantes.
+        elif stats['REB'] > 350 and stats['MIN'] > 800 and stats['PTS'] < 600:
+            role = "Hombre Grande Rebotador / De Rol"
+
+        # --- Creadores de Juego / Bases ---
+        # Alta AST, minutos significativos. Exigimos más AST para este rol.
+        elif stats['AST'] > 350 and stats['MIN'] > 1200:
+            # Si tiene también buen volumen de anotación y triple, es un creador completo
+            if stats['PTS'] > 800 and stats['FG3M'] > 80:
+                role = "Base Creador de Juego / Anotador"
+            else:
+                role = "Base Creador de Juego Puro"
+        
+        # --- Bases de Rol / Facilitadores (Ahora más específico para no sobrecargar) ---
+        # Jugadores que facilitan el juego con asistencias decentes para sus minutos,
+        # pero que no son los creadores primarios. Podrían tener un buen tiro de 3.
+        # Aquí es donde hemos hecho el mayor ajuste.
+        elif stats['AST'] > 150 and stats['MIN'] > 500 and stats['PTS'] < 500:
+            if stats['FG3M'] > 70 and stats['FG3_PCT'] > 0.35:
+                role = "Base de Rol / Facilitador (Tirador)"
+            else:
+                role = "Base de Rol / Manejador de Balón"
+
+        # --- Especialistas Ofensivos: Tiradores de Élite / Escoltas Anotadores ---
+        # Alto volumen y eficiencia en triples, buen volumen de tiro general.
+        # Mayor exigencia para ser "Especialista en Triples"
+        elif stats['FG3_PCT'] > 0.38 and stats['FG3M'] > 150 and stats['FGA'] > 600:
+            role = "Especialista en Triples / Escolta Anotador"
+        
+        # --- Anotadores de Volumen / Aleros Ofensivos ---
+        # Alto PTS y FGA, no encaja en un rol de tirador o centro específico.
+        # Ahora el umbral de PTS es más alto.
+        elif stats['PTS'] > 800 and stats['FGA'] > 650:
+            role = "Anotador de Volumen / Alero Ofensivo"
+
+        # --- Defensores de Rol ---
+        # Buen número de robos y/o bloqueos, con minutos significativos.
+        elif (stats['STL'] > 80 or stats['BLK'] > 40) and stats['MIN'] > 700:
+            role = "Defensor de Rol"
+
+        # --- Jugador Completo (All-Around) ---
+        # Buen balance en múltiples categorías, minutos significativos.
+        # Este rol es para jugadores que contribuyen en muchas áreas y no encajan en un especialista.
+        # Hacemos los umbrales más estrictos para este rol.
+        elif stats['PTS'] > 500 and stats['AST'] > 150 and stats['REB'] > 250 and \
+             stats['MIN'] > 1000 and stats['FG_PCT'] > 0.45:
+            role = "Jugador Completo (All-Around)"
+
+        # --- Jugador de Rol General (último recurso) ---
+        # Si aún no se asignó un rol específico, es un jugador de rol más general.
+        if role == "Indefinido":
+            role = "Jugador de Rol General"
+
+        cluster_roles[cluster_id] = role
+
+    return cluster_roles
+
 
 if __name__ == '__main__':
     filepath = 'nba_active_player_stats_2023-24_Regular_Season_100min.xlsx' 
@@ -636,7 +793,7 @@ if __name__ == '__main__':
 
     # --- Realizar Clustering ---
     # AJUSTA ESTO CON EL K ÓPTIMO QUE ENCONTRASTE CON EL MÉTODO DEL CODO
-    optimal_k = 5 
+    optimal_k = 5
 
     clusters, kmeans_model = perform_kmeans_clustering(scaled_stats_df, optimal_k)
 
@@ -645,6 +802,11 @@ if __name__ == '__main__':
 
     # --- Analizar Clústeres (para entender los roles) ---
     cluster_means = analyze_clusters(player_data_cleaned, clustering_stats_columns)
+    # --- Asignar Roles a los Clústeres ---
+    cluster_roles = assign_cluster_roles(cluster_means)
+    print("\n--- Roles de los Clústeres Asignados ---")
+    for c_id, role_name in cluster_roles.items():
+        print(f"Clúster {c_id}: {role_name}")
 
     # --- Menú de Selección de Jugadores ---
     all_nba_teams = pd.DataFrame(teams.get_teams())
@@ -672,8 +834,9 @@ if __name__ == '__main__':
                 selected_player_name, 
                 player_data_cleaned, 
                 cluster_means, 
-                clustering_stats_columns, 
-                scaler
+                cluster_roles, # Asegúrate de que este esté aquí
+                clustering_stats_columns, # Este también es necesario
+                scaler # <-- ¡Asegúrate de que 'scaler' esté aquí!
             )
         else:
             print("No se seleccionó ningún jugador.")

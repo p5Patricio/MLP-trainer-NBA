@@ -4,6 +4,10 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import warnings
+
+# Ignorar FutureWarnings para evitar saturar la salida
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def load_and_preprocess_data(filepath, stats_columns):
     """
@@ -124,6 +128,13 @@ def analyze_clusters(player_data_with_clusters, stats_columns):
     cluster_means = player_data_with_clusters.groupby('CLUSTER')[stats_columns].mean()
     print("\nEstadísticas promedio por clúster:")
     print(cluster_means)
+    # Guarda las estadísticas promedio por clúster en un archivo Excel
+    output_filename = 'cluster_means_report.xlsx'
+    try:
+        cluster_means.to_excel(output_filename)
+        print(f"\nEstadísticas promedio por clúster guardadas en: {output_filename}")
+    except Exception as e:
+        print(f"Error al guardar las estadísticas promedio en Excel: {e}")
     
     overall_means = player_data_with_clusters[stats_columns].mean()
     print("\nEstadísticas promedio generales de la liga:")
@@ -157,7 +168,7 @@ if __name__ == '__main__':
         # Después de ejecutarlo, elige un K y ponlo abajo.
         # Por ejemplo, si el codo está en 4 o 5:
         
-        optimal_k = 4 # <--- Sustituye esto con el K que elegiste del método del codo
+        optimal_k = 5 # <--- Sustituye esto con el K que elegiste del método del codo
         
         clusters, kmeans_model = perform_kmeans_clustering(scaled_stats_df, optimal_k)
         
