@@ -2,7 +2,7 @@ import pandas as pd
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats
 import time
-import math # Para chequear si un valor es NaN
+import math
 
 def get_nba_active_player_stats(season='2023-24', season_type='Regular Season', min_minutes_played=100):
     """

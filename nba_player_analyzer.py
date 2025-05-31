@@ -5,8 +5,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-from xhtml2pdf import pisa # Importar para generar PDF con xhtml2pdf
-import datetime # Para la marca de tiempo del reporte
+from xhtml2pdf import pisa
+import datetime 
 
 # Define categorías de estadísticas para gráficos de radar más legibles
 radar_stats_categories = {

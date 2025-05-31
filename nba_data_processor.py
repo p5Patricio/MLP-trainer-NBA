@@ -164,7 +164,7 @@ if __name__ == '__main__':
         scaled_stats_df, scaler = scale_data(stats_for_clustering)
         
         # Para elegir el K, ejecuta esto una vez y mira el gráfico
-        #find_optimal_k(scaled_stats_df) 
+        # find_optimal_k(scaled_stats_df) 
         # Después de ejecutarlo, elige un K y ponlo abajo.
         # Por ejemplo, si el codo está en 4 o 5:
         
